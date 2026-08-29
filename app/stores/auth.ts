@@ -127,6 +127,29 @@ export const useAuthStore = defineStore("auth", () => {
     await navigateTo("/");
   }
 
+  /**
+   * Silent session recovery — POST /auth/refresh with the refresh token as a
+   * QUERY param (backend contract: bare str -> query string).
+   *
+   * Safe against races: the backend refresh is stateless (JWT type=refresh,
+   * no rotation — verified in auth_service.refresh), so this coexisting with
+   * useApi's single-flight 401 refresh can never invalidate a live session.
+   */
+  async function tryRefresh(): Promise<boolean> {
+    if (!refreshToken.value) return false;
+    try {
+      const pair = await $api<AuthTokenPair>("/auth/refresh", {
+        method: "POST",
+        query: { refresh_token: refreshToken.value },
+      });
+      setTokens(pair);
+      return true;
+    } catch {
+      clearTokens(); // refresh rejected/expired -> teardown; next guard bounces to login
+      return false;
+    }
+  }
+
   /** POST /auth/login (JSON — never the OAuth2 /auth/token form endpoint) */
   async function login(email: string, password: string) {
     const pair = await $api<AuthTokenPair>("/auth/login", {
@@ -161,12 +184,19 @@ export const useAuthStore = defineStore("auth", () => {
   }
 
   /**
-   * Client boot (see plugins/auth.client.ts): with a stored token but no
-   * profile, validate the session and hydrate the user. Runs on the client
-   * only — SWR-cached pages are shared across users, so /auth/me must
-   * never be fetched during SSR.
+   * Client boot (see plugins/auth.client.ts): restore and validate the
+   * session before any middleware runs. Never runs during SSR — SWR pages
+   * are shared across users, so /auth/me must never be fetched server-side.
    */
   async function bootstrap() {
+    if (user.value) return;
+
+    // Hard-load recovery: the access cookie lives 30 min, the refresh cookie
+    // 4 days. If only the refresh cookie remains, silently restore the
+    // session FIRST — otherwise every guard would bounce a perfectly
+    // logged-in user to /auth/login.
+    if (!accessToken.value && refreshToken.value) await tryRefresh();
+
     if (!accessToken.value || user.value) return;
     try {
       await fetchMe();
@@ -189,6 +219,7 @@ export const useAuthStore = defineStore("auth", () => {
     login,
     register,
     logout,
+    tryRefresh,
     fetchMe,
     setTokens,
     clearTokens,
