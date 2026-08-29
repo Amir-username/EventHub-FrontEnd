@@ -55,6 +55,8 @@ const ACCESS_COOKIE = "eh_at"; // maxAge 30 min — matches access token TTL
 const REFRESH_COOKIE = "eh_rt"; // maxAge 4 days — matches refresh token TTL
 const REFRESH_PATH = "/auth/refresh";
 
+let refreshInFlight: Promise<boolean> | null = null;
+
 function requestId(): string {
   return (
     globalThis.crypto?.randomUUID?.() ??
