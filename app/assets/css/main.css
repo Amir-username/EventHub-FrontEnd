@@ -1,0 +1,103 @@
+/**
+ * EventHub Design System — main.css
+ * Stack: Nuxt UI v4 + Tailwind CSS 4
+ * Place at: app/assets/css/main.css
+ */
+
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+/* ------------------------------------------------------------------ */
+/* Design tokens (Tailwind 4 theme)                                    */
+/* `static` is required by Nuxt UI so every variable gets emitted,     */
+/* even ones only referenced dynamically at runtime.                   */
+/* ------------------------------------------------------------------ */
+@theme static {
+  /* Brand — EventHub coral ramp (primary) */
+  --color-brand-50:  #FFF4EF;
+  --color-brand-100: #FFE5D8;
+  --color-brand-200: #FFC9B0;
+  --color-brand-300: #FFA57F;
+  --color-brand-400: #FF7F4D;
+  --color-brand-500: #F05537;
+  --color-brand-600: #DB4220;
+  --color-brand-700: #B73518;
+  --color-brand-800: #932E19;
+  --color-brand-900: #772A18;
+  --color-brand-950: #3F130A;
+
+  /* Typography — display font for headings, Inter for everything else */
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  /* Elevation — soft, card-first shadows */
+  --shadow-card: 0 1px 2px rgb(28 25 23 / 0.05), 0 8px 24px rgb(28 25 23 / 0.06);
+  --shadow-lift: 0 2px 4px rgb(28 25 23 / 0.05), 0 16px 40px rgb(28 25 23 / 0.12);
+
+  /* Motion */
+  --ease-brand: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* ------------------------------------------------------------------ */
+/* Nuxt UI semantic overrides                                          */
+/* ------------------------------------------------------------------ */
+:root {
+  /* 12px base radius — all Nuxt UI components derive rounding from this */
+  --ui-radius: 0.75rem;
+  /* Warm page canvas (stone-50) instead of pure white */
+  --ui-bg: #FAFAF9;
+}
+
+.dark {
+  --ui-bg: #0C0A09; /* stone-950 */
+}
+
+/* ------------------------------------------------------------------ */
+/* Component recipes                                                   */
+/* ------------------------------------------------------------------ */
+
+/* Standard card surface (event cards, admin panels, checkout summary) */
+.card-surface {
+  @apply rounded-xl border border-stone-200/80 bg-white shadow-card;
+}
+.dark .card-surface {
+  @apply border-stone-800 bg-stone-900;
+}
+
+/* Prices, totals, countdown digits: always tabular figures */
+.numeric {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Reservation countdown in its final minute (10-min reservation window) */
+@keyframes eh-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.55; }
+}
+.countdown-urgent {
+  animation: eh-pulse 1s var(--ease-brand) infinite;
+  color: var(--color-amber-600);
+}
+.dark .countdown-urgent {
+  color: var(--color-amber-400);
+}
+
+/* Hover raise for the event grid */
+.event-card {
+  transition: transform 150ms var(--ease-brand), box-shadow 150ms var(--ease-brand);
+}
+.event-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lift);
+}
+
+/* Accessibility: kill motion when the OS asks for it */
+@media (prefers-reduced-motion: reduce) {
+  .countdown-urgent,
+  .event-card,
+  .event-card:hover {
+    animation: none;
+    transition: none;
+    transform: none;
+  }
+}
