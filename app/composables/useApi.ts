@@ -9,7 +9,7 @@
  *  - Errors: {"detail": string}; 422 = {"detail": [{loc, msg}]}; 429 has Retry-After
  *  - Allowed headers in prod: Authorization / Content-Type / X-Request-ID
  */
-import type { FetchError, FetchOptions } from "ofetch";
+import type { FetchError } from "ofetch";
 
 /* ---------- Contract types ---------- */
 
@@ -124,14 +124,20 @@ export function normalizeApiError(err: FetchError): ApiError {
 export function useApi() {
   const baseURL = useRuntimeConfig().public.apiBase;
 
+  // Options MUST mirror the auth store's useCookie calls exactly — Nuxt caches
+  // cookie refs per name, so whichever call runs first wins.
   const access = useCookie<string | null>(ACCESS_COOKIE, {
-    maxAge: 60 * 30,
+    path: "/",
     sameSite: "lax",
+    secure: import.meta.env.PROD,
+    maxAge: 60 * 30,
     default: () => null,
   });
   const refresh = useCookie<string | null>(REFRESH_COOKIE, {
-    maxAge: 60 * 60 * 24 * 4,
+    path: "/",
     sameSite: "lax",
+    secure: import.meta.env.PROD,
+    maxAge: 60 * 60 * 24 * 4,
     default: () => null,
   });
 
@@ -204,7 +210,10 @@ export function useApi() {
    */
   async function api<T = unknown>(
     path: string,
-    opts: FetchOptions = {},
+    // Derive the options type from the fetcher itself — Nuxt's $fetch.create
+    // returns Nitro-flavored options whose `method` is a literal union, which
+    // ofetch's loose `FetchOptions` (method: string) does not satisfy.
+    opts: Parameters<typeof fetcher>[1] = {},
   ): Promise<T> {
     try {
       return await fetcher<T>(path, opts);

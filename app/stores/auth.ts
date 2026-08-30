@@ -69,7 +69,7 @@ function decodeJwtPayload(token: string): { role?: string } | null {
 export const useAuthStore = defineStore("auth", () => {
   /* ---------- transport ---------- */
   /** Configured client from useApi — Bearer, refresh-on-401, error normalization */
-  const $api = useApi();
+  const { api: $api, tryRefresh: apiTryRefresh } = useApi();
 
   /* ---------- state: cookies are the persistence layer ---------- */
   const accessToken = useCookie<string | null>(ACCESS_COOKIE, {
@@ -106,14 +106,14 @@ export const useAuthStore = defineStore("auth", () => {
 
   /* ---------- actions ---------- */
 
-  /** Called by useApi's single-flight 401 refresh — single write path for tokens */
+  /** Called after login() — single write path for tokens */
   function setTokens(pair: AuthTokenPair) {
     accessToken.value = pair.access_token;
     refreshToken.value = pair.refresh_token;
     tokenRole.value = decodeJwtPayload(pair.access_token)?.role ?? null;
   }
 
-  /** Pure teardown — useApi's refresh-failure path uses this (it does its own redirect) */
+  /** Pure teardown — refresh-failure and logout both use this */
   function clearTokens() {
     accessToken.value = null; // assigning null removes the cookie
     refreshToken.value = null;
@@ -128,26 +128,24 @@ export const useAuthStore = defineStore("auth", () => {
   }
 
   /**
-   * Silent session recovery — POST /auth/refresh with the refresh token as a
-   * QUERY param (backend contract: bare str -> query string).
+   * Silent session recovery — delegates to useApi's SINGLE-FLIGHT refresh
+   * (POST /auth/refresh, refresh_token as a QUERY param), so concurrent 401s
+   * and bootstrap share one in-flight promise instead of racing.
    *
    * Safe against races: the backend refresh is stateless (JWT type=refresh,
-   * no rotation — verified in auth_service.refresh), so this coexisting with
-   * useApi's single-flight 401 refresh can never invalidate a live session.
+   * no rotation — verified in auth_service.refresh), so this can never
+   * invalidate a live session.
    */
   async function tryRefresh(): Promise<boolean> {
-    if (!refreshToken.value) return false;
-    try {
-      const pair = await $api<AuthTokenPair>("/auth/refresh", {
-        method: "POST",
-        query: { refresh_token: refreshToken.value },
-      });
-      setTokens(pair);
-      return true;
-    } catch {
-      clearTokens(); // refresh rejected/expired -> teardown; next guard bounces to login
+    const ok = await apiTryRefresh();
+    if (!ok) {
+      // useApi's teardown only clears cookies — also drop profile + role claim
+      clearTokens();
       return false;
     }
+    // useApi wrote the fresh pair into the shared cookie refs — re-read the claim
+    tokenRole.value = decodeJwtPayload(accessToken.value ?? "")?.role ?? null;
+    return true;
   }
 
   /** POST /auth/login (JSON — never the OAuth2 /auth/token form endpoint) */
