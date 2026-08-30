@@ -33,7 +33,7 @@ function isActive(to: string) {
         @click="mobileNavOpen = true"
       />
       <span class="font-display font-semibold tracking-tight">Admin</span>
-      <UColorModeButton />
+      <ColorModeToggle />
     </header>
 
     <!-- Sidebar (desktop) -->

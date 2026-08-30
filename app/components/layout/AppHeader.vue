@@ -74,8 +74,7 @@ const accountItems = computed(() => [
       </div>
 
       <div class="flex items-center gap-1.5">
-        <UColorModeButton />
-
+        <ColorModeToggle />
         <!-- SWR-safe account area: fallback = signed-out CTAs, so crawlers see
              real links in cached HTML; logged-in users flip after hydration. -->
         <ClientOnly>
