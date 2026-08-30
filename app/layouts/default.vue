@@ -1,9 +1,9 @@
 <template>
   <div class="min-h-screen flex flex-col">
-    <!-- AppHeader goes here (ROADMAP Phase 2.4) -->
+    <LayoutAppHeader />
     <main class="flex-1">
       <slot />
     </main>
-    <!-- AppFooter goes here -->
+    <LayoutAppFooter />
   </div>
 </template>
